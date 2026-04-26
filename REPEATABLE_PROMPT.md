@@ -31,7 +31,7 @@ Read this **before** writing code for any project in this series (Project 1 thro
 ## Series rules (non-negotiable)
 
 1. Every project is a **complete rewrite from scratch**. Do not extend or copy the previous project.
-2. Every project must include **ALL** skills from every previous project, written out **in full** in all three languages. Nothing summarized or replaced with “same as before.”
+2. Every project must include **ALL** skills from every previous project, written out **in full** in all three languages. Nothing summarized or replaced with "same as before."
 3. **New skills** are always added at the **bottom** of each file, after all previously learned skills.
 4. Every project **README** must include a **cross-language equivalency table** for every concept used so far (template row examples):
 
@@ -54,7 +54,81 @@ The table **grows** as the series progresses; by Project 15 it is a full referen
    - **Skills repeated from previous projects** — bullet list, all three languages  
    - **New skill introduced this project** — bullet list, all three languages  
 
-(Additional README notes such as “What this unlocks” come **after** those two sections when specified for a project.)
+(Additional README notes such as "What this unlocks" come **after** those two sections when specified for a project.)
+
+---
+
+## Teaching flow — interactive, one language at a time
+
+At the start of every project, the assistant must:
+
+1. **Ask which language to start in** (R, Python, or C#) before writing any code.
+2. After I pick, **execute the full setup for that language only**, in this exact order:
+   - Verify language version (`python --version`, `Rscript --version`, `dotnet --version`)
+   - Create the project subfolder (`R/`, `Python/`, or `CSharp/`)
+   - Initialize the file or project (e.g., `dotnet new console`, `python -m venv`, R script file)
+   - Install dependencies for that language only
+   - Walk me through **ALL prior project steps in order**, then end with **the current project's new step(s)**
+3. **Stop and wait** between every step. Do not preemptively write the next step or jump to another language.
+4. After I confirm a step works, I will say "next step" or "next language."
+5. After all steps are complete in language 1, I will say "next language."
+6. Repeat the same flow in language 2, then language 3.
+
+### Sequential step rebuild — every project includes every prior project's steps
+
+Every project starts at **Step 1 from Project 1** and walks forward, retyping every step from every prior project, before reaching the new step that defines the current project. **No skipping. No "same as Project 3 — see prior repo."**
+
+#### What "all prior steps" means per project
+
+For **Project 4 (Context from a File)**, the step sequence in each language is:
+
+- **Step 1** — Load API key from environment (Project 1)
+- **Step 2** — Define `base_url` and headers (Project 1)
+- **Step 3** — Build HTTP POST with JSON payload (Project 1)
+- **Step 4** — Parse JSON response, extract assistant text (Project 1)
+- **Step 5** — Define `system_prompt` string (Project 2)
+- **Step 6** — Seed `messages` list with system role (Project 2)
+- **Step 7** — Build infinite conversation loop with exit condition (Project 2)
+- **Step 8** — Append user message to `messages` before API call (Project 3)
+- **Step 9** — Pass full `messages` history to API on every call (Project 3)
+- **Step 10** — Append assistant reply to `messages` after each call (Project 3)
+- **Step 11** — Read `context.txt` from disk with safe path handling + UTF-8 (Project 4 — NEW)
+- **Step 12** — Inject file contents into `system_prompt` before seeding `messages` (Project 4 — NEW)
+
+For **Project 5 (PDF Reader Bot)**, the sequence will include Steps 1–10 above, then replace Step 11 with PDF parsing, and so on through every project. By Project 15, every chatbot is built from ~40+ steps spanning all 15 projects.
+
+#### Why this rhythm
+
+- **One-take progress per language** — type the code manually, run it, confirm it works.
+- **Forced repetition compounds memory** — by Project 15, "load API key" has been retyped 30 times across three languages and is permanent.
+- **No cognitive load from three syntaxes at once** — focus on one language's idioms before comparing.
+- **Catches drift** — retyping every step from scratch surfaces small bugs and prevents copy-paste rot.
+
+### Assistant response format per step
+
+When I confirm a step or ask for the next one, respond in this order:
+
+1. **Step heading** — e.g., `Step 1: Load API key from environment (Project 1)` — labeled with which project it originates from.
+2. **CONCEPT block** in the comment format from `TrilingualCodingInstructorPrompt.md` (CONCEPT, bullets, STEP-BY-STEP, code with inline comments).
+3. **Code for the current language only** — 1–3 lines per step where possible.
+4. **How to verify it works** (one command or one line of expected output).
+5. **Stop.** Wait for "next step" or "next language."
+
+Do **not** include R, Python, AND C# in the same response unless I explicitly ask for "all three at once."
+
+### Language order
+
+Default order: **R → Python → C#** (matches the series convention from rule 4 in *Series rules*).
+
+But I can override at the start: "let's start with Python," "let's do C# first," etc.
+
+### Trigger phrases I will use
+
+- **"start with [language]"** — pick which language to begin
+- **"next step"** — move to the next step in the same language
+- **"next language"** — switch to the next language and restart at Step 1
+- **"redo step X"** — repeat a step (e.g., for debugging)
+- **"all three at once"** — override and show R, Python, C# side-by-side for the current step
 
 ---
 
@@ -113,13 +187,26 @@ dotnet user-secrets set "OPENAI_API_KEY" "your-key-here"
 
 ## Project 4 brief (Context from a File)
 
-Read a `.txt` file from disk and inject it into `system_prompt` **before** seeding `messages`. Memory loop, API call, and exit condition match Project 3 in behavior but are **rewritten from scratch** here.
+Read a `.txt` file from disk and inject it into `system_prompt` **before** seeding `messages`. Memory loop, API call, and exit condition are **rewritten from scratch** here using every step from Projects 1–3.
 
-### Skills to repeat (Projects 1–3)
+### Step sequence for Project 4 (full rebuild)
 
-**Project 1 — Hello LLM:** load API key; HTTP POST with headers + JSON; parse JSON for assistant text.  
-**Project 2 — Persona Bot:** system persona string; seed `messages` with system role; loop + exit.  
-**Project 3 — Chatbot with Memory:** append user message; send full history each call; append assistant reply.
+| # | Step | Origin |
+|---|------|--------|
+| 1 | Load API key from environment | Project 1 |
+| 2 | Define `base_url` and headers | Project 1 |
+| 3 | Build HTTP POST with JSON payload | Project 1 |
+| 4 | Parse JSON response, extract assistant text | Project 1 |
+| 5 | Define `system_prompt` string | Project 2 |
+| 6 | Seed `messages` list with system role | Project 2 |
+| 7 | Build infinite conversation loop with exit condition | Project 2 |
+| 8 | Append user message to `messages` before API call | Project 3 |
+| 9 | Pass full `messages` history to API on every call | Project 3 |
+| 10 | Append assistant reply to `messages` after each call | Project 3 |
+| 11 | Read `context.txt` from disk with safe path + UTF-8 | **Project 4 — NEW** |
+| 12 | Inject file contents into `system_prompt` before seeding `messages` | **Project 4 — NEW** |
+
+Each step gets its own response per language. Step 1 in R, then "next step" → Step 2 in R, etc., through Step 12 in R. Then "next language" → Step 1 in Python, and so on.
 
 ### New skills (Project 4)
 
@@ -132,7 +219,8 @@ Read a `.txt` file from disk and inject it into `system_prompt` **before** seedi
 ### Format checklist
 
 - Terminal setup first in assistant responses; README mirrors it at the top
-- Order in prose/docs: **R**, then **Python**, then **C#** when describing implementations
+- **Live coding flow:** assistant asks which language to start in, then walks through Steps 1–12 sequentially in that language, one step per response, before switching to the next language.
+- Order in **README/docs only**: R → Python → C# (this is documentation order, not live-teaching order)
 - UTF-8 Windows gotcha in all three languages
 - Sample `context.txt`
 - README equivalency table for Projects **1–4**
