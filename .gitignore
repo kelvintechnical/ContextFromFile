@@ -1,0 +1,35 @@
+# Environment
+.env
+.env.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+Python/.venv/
+venv/
+env/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# C#
+**/bin/
+**/obj/
+.vs/
+*.sln.user
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

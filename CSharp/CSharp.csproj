@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CSharp</RootNamespace>
+    <UserSecretsId>a8f3c1b2-4d5e-6f70-8192-abcdef012345</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\context.txt" Link="context.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
