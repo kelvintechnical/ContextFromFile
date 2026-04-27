@@ -1,8 +1,10 @@
-# Context from File (R · Python · C#)
+# Context from File (Project 4) — R
 
-**Read an external `.txt` file from disk, inject it into the system prompt, and build a reconfigurable chatbot in R, Python, and C#.**
+**Read an external `.txt` from disk, inject it into the system prompt, and run a multi-turn chatbot in R.**
 
-> Part of the [Trilingual Coding Compounding Series](https://github.com/kelvintechnical?tab=repositories&q=compounding). Each project teaches the same milestone in **R → Python → C#** simultaneously.
+This repository currently contains **only the R implementation** (`R/chatbot.R`). The wider series is trilingual (R → Python → C#); see `REPEATABLE_PROMPT.md` for full rules and equivalency across languages.
+
+> Part of the [Trilingual Coding Compounding Series](https://github.com/kelvintechnical?tab=repositories&q=compounding).
 
 ---
 
@@ -11,10 +13,10 @@
 | Skill | Purpose |
 |-------|---------|
 | **File I/O** | Read `.txt` files from disk with safe path handling |
-| **String Injection** | Concatenate file contents into the system prompt before the chat loop |
-| **Configurability** | Swap bot “personality” by changing `context.txt`, not application code |
-| **UTF-8 Encoding** | Handle multi-byte characters safely across Windows, macOS, and Linux |
-| **Separation of Concerns** | Keep external data (context) separate from source code |
+| **String injection** | Concatenate file contents into the system prompt before the chat loop |
+| **Configurability** | Swap bot behavior by changing `context.txt`, not only application code |
+| **UTF-8 encoding** | Handle multi-byte characters safely (explicit `encoding = "UTF-8"` in `readLines`) |
+| **Separation of concerns** | Keep external data (context) separate from source code |
 
 ---
 
@@ -34,8 +36,8 @@
 
 Everything from **[Chatbot_with_memory](https://github.com/kelvintechnical/Chatbot_with_memory)** is retyped here in full (not imported): same ideas, fresh code.
 
-- Load API key from environment (and optional `.env` / user secrets where configured)
-- Build HTTP POST request with headers and JSON payload
+- Load API key from environment (with optional `.env` via `dotenv`)
+- Build HTTP POST with `httr2`, JSON body, headers
 - Parse JSON response to extract assistant text
 - Seed `messages` with a system-role prompt
 - Infinite conversation loop with exit condition
@@ -45,74 +47,29 @@ Everything from **[Chatbot_with_memory](https://github.com/kelvintechnical/Chatb
 
 ---
 
-## New Skills Introduced in Project 4
+## New Skills Introduced in Project 4 (R)
 
 ### 1. File I/O (read `.txt` from disk)
 
-**Python** (`Python/chatbot.py` — resolves repo root from `__file__`, then opens with UTF-8):
-
-```python
-from pathlib import Path
-
-repo_root = Path(__file__).resolve().parent.parent
-context_path = repo_root / "context.txt"
-if not context_path.is_file():
-    raise FileNotFoundError(f"Context file not found: {context_path}")
-
-with open(context_path, encoding="utf-8") as f:
-    file_context = f.read()
-```
-
-**R** (`R/chatbot.R` — `Rscript R/chatbot.R` from repo root; path joins from script directory):
+Run from the `R/` folder so `..` points at the repo root. Example pattern:
 
 ```r
-args <- commandArgs(trailingOnly = FALSE)
-file_flags <- args[startsWith(args, "--file=")]
-script_dir <- if (length(file_flags)) {
-  dirname(normalizePath(sub("^--file=", "", file_flags[1])))
-} else {
-  getwd()
-}
-context_path <- normalizePath(file.path(script_dir, "..", "context.txt"), mustWork = TRUE)
-if (!file.exists(context_path)) {
-  stop(paste("Context file not found:", context_path))
-}
-file_context <- paste(
-  readLines(context_path, encoding = "UTF-8", warn = FALSE),
-  collapse = "\n"
-)
+context_path <- file.path("..", "context.txt")
+context_lines <- readLines(context_path, warn = FALSE, encoding = "UTF-8")
+context_text <- paste(context_lines, collapse = "\n")
 ```
 
-**C#** (`CSharp/Program.cs` — `context.txt` is copied beside the build output via `CSharp.csproj`):
-
-```csharp
-using System.Text;
-
-var contextPath = Path.Combine(AppContext.BaseDirectory, "context.txt");
-if (!File.Exists(contextPath))
-    throw new FileNotFoundException($"Context file not found: {contextPath}");
-
-var fileContext = File.ReadAllText(contextPath, Encoding.UTF8);
-```
-
-**Key gotcha:** Always specify UTF-8 explicitly (`encoding="utf-8"` in Python, `encoding = "UTF-8"` in `readLines`, `Encoding.UTF8` in C#). On Windows, default encodings are often legacy code pages and will corrupt non-ASCII text.
+**Key gotcha:** Always pass **`encoding = "UTF-8"`** in `readLines` on Windows so non-ASCII text matches your editor and the API.
 
 ### 2. Safe path handling
 
-| Language | Pattern | Why |
-|----------|---------|-----|
-| Python | `Path(__file__).resolve().parent.parent / "context.txt"` | Stable path relative to the script, not the shell’s cwd |
-| R | `file.path(script_dir, "..", "context.txt")` + `normalizePath` | Cross-platform separators; works with `Rscript R/chatbot.R` |
-| C# | `Path.Combine(AppContext.BaseDirectory, "context.txt")` | Resolves next to the published binary after MSBuild copies the file |
+| Pattern | Why |
+|---------|-----|
+| `file.path("..", "context.txt")` | Stable relative path when the working directory is `R/` |
 
 ### 3. String injection into the system prompt
 
-```python
-persona = "You are a helpful assistant that stays faithful to the supplied context."
-system_prompt = f"{persona}\n\n--- Context from file ---\n{file_context}"
-```
-
-The file content becomes part of the **persistent** system instruction—it shapes behavior for the whole session, not a single user turn.
+Build one `system_prompt` string that includes both your instructions and `context_text` (for example with `paste0`), **then** seed `messages` with that combined string. File-backed context is **standing instruction**, so it belongs in the **system** role, not as a fake user turn.
 
 ### 4. Why context belongs in the `system` role, not the `user` role
 
@@ -120,8 +77,6 @@ The file content becomes part of the **persistent** system instruction—it shap
 |------|--------|-------------|
 | `system` | Stable instructions for the whole conversation | Persona, policy, loaded knowledge |
 | `user` | One turn in the thread | The live question for this round |
-
-File-backed context is **standing instruction**, so it belongs in the system prompt (then the memory loop appends alternating `user` / `assistant` turns as in Project 3).
 
 ---
 
@@ -131,24 +86,19 @@ File-backed context is **standing instruction**, so it belongs in the system pro
 ContextFromFile/
 ├── R/
 │   └── chatbot.R
-├── Python/
-│   ├── chatbot.py
-│   └── requirements.txt
-├── CSharp/
-│   ├── CSharp.csproj
-│   └── Program.cs
 ├── context.txt                 # External context (edit without touching code)
-├── .env.example
-├── .gitignore
+├── .gitignore                  # Includes .env (secrets never committed)
 ├── REPEATABLE_PROMPT.md        # Full series rules + project list (1–15)
 └── README.md
 ```
+
+Create a **`.env`** file at the repo root (same folder as `context.txt`) with `OPENAI_API_KEY=...`. It is ignored by git.
 
 ---
 
 ## Sample `context.txt`
 
-The repository includes a starter **starship Meridian** briefing. Replace it entirely—for example with the **fortune teller** sample below—to see how behavior changes without code edits:
+Replace the starter file to change behavior without code edits. Example:
 
 ```text
 You are a cryptic fortune teller who speaks in riddles.
@@ -159,30 +109,34 @@ Always end with: "The stars remain silent on further details."
 
 ---
 
-## Running each language
+## Run (R)
 
-**Prerequisite:** `OPENAI_API_KEY` in your environment, in a `.env` file at the **repository root** (Python/R), and/or in **.NET user secrets** for C# (`dotnet user-secrets set "OPENAI_API_KEY" "..."` from `CSharp/`).
-
-### Python
+**Prerequisite:** `OPENAI_API_KEY` in a `.env` file at the **repository root** (parent of `R/`).
 
 ```powershell
-python Python/chatbot.py
+cd R
+Rscript chatbot.R
 ```
 
-(Recommended: create `Python/.venv`, activate it, then `pip install -r Python/requirements.txt`.)
-
-### R
+Type `quit` to exit. For a quick pipe test:
 
 ```powershell
-Rscript R/chatbot.R
+cmd /c "(echo hello& echo quit) | Rscript chatbot.R"
 ```
 
-(Run from repo root so paths and optional `.env` resolve.)
+---
 
-### C#
+## Environment setup (R)
+
+- R **4.x+**
+- **OpenAI** API access; key as `OPENAI_API_KEY`
+
+```r
+install.packages(c("httr2", "jsonlite", "dotenv"), repos = "https://cloud.r-project.org")
+```
 
 ```powershell
-dotnet run --project CSharp/CSharp.csproj
+Rscript --version   # expect 4.x+
 ```
 
 ---
@@ -196,8 +150,6 @@ dotnet run --project CSharp/CSharp.csproj
 | Later | Multiple documents, ranking, top-K chunks into the prompt |
 | **RAG-style systems** | Query → retrieve → inject context → API call |
 
-The **plumbing** (read text → merge into system message → multi-turn history) stays the same; only the **source** of the text changes.
-
 ---
 
 ## Next project
@@ -206,53 +158,9 @@ The **plumbing** (read text → merge into system message → multi-turn history
 
 ---
 
-## Environment setup
-
-### Prerequisites
-
-- Python **3.10+**
-- R **4.x+**
-- .NET SDK **10.x** (this C# project targets `net10.0`)
-- **OpenAI** API access; key as `OPENAI_API_KEY` (not Anthropic in this repo)
-
-### Install dependencies
-
-**Python**
-
-```powershell
-cd Python
-pip install -r requirements.txt
-```
-
-**R**
-
-```r
-install.packages(c("httr2", "jsonlite", "dotenv"), repos = "https://cloud.r-project.org")
-```
-
-**C#**
-
-```powershell
-cd CSharp
-dotnet restore
-dotnet user-secrets set "OPENAI_API_KEY" "your-key-here"
-```
-
----
-
-## Terminal setup (series convention)
-
-```powershell
-python --version                        # 3.10+
-Rscript --version                       # 4.x+
-dotnet --version                        # 10.x
-```
-
-See `REPEATABLE_PROMPT.md` for the full non-negotiable series rules, the **Projects 1–15** roadmap, and the **cross-language equivalency table** through Project 4.
-
----
-
 ## Cross-language equivalency (Projects 1–4)
+
+Reference for the **series** (Python/C# are not in this repo):
 
 | Concept | Python | R | C# |
 | ------- | ------ | - | -- |
@@ -263,25 +171,21 @@ See `REPEATABLE_PROMPT.md` for the full non-negotiable series rules, the **Proje
 | System prompt variable | `system_prompt` | `system_prompt` | `systemPrompt` |
 | Read UTF-8 file | `open(path, encoding="utf-8")` | `readLines(..., encoding = "UTF-8")` + `paste(..., collapse = "\n")` | `File.ReadAllText(path, Encoding.UTF8)` |
 
+See `REPEATABLE_PROMPT.md` for the full non-negotiable series rules and the **Projects 1–15** roadmap.
+
 ---
 
 ## Skills repeated from previous projects
 
-**Python:** env / `.env` key, `requests` POST + JSON, parse response, `system_prompt` + seed `messages`, loop + `quit`, append user / full history / assistant.
+**R:** env / `.env` key, `httr2` POST + JSON, `resp_body_json` parse, `system_prompt` + seed `messages`, loop + `quit`, append user / full history / assistant.
 
-**R:** env / `.env` key, `httr2` POST + JSON, `jsonlite` parse, `system_prompt` + seed `messages`, loop + `quit`, append user / full history / assistant.
-
-**C#:** `IConfiguration` + user secrets / env, `HttpClient` POST + JSON, `JsonDocument` parse, `systemPrompt` + seed `messages`, loop + `quit`, append user / full history / assistant.
+*(Python and C# variants follow the same skill list in other series repos / branches.)*
 
 ---
 
 ## New skill introduced this project
 
-**Python:** `pathlib` + `open(..., encoding="utf-8")`, inject `file_context` into `system_prompt`, comments on system vs user role and external data.
-
-**R:** `file.path` / `normalizePath` + UTF-8 `readLines` + `paste`, inject into `system_prompt`, same rationale in comments.
-
-**C#:** `Path.Combine(AppContext.BaseDirectory, ...)` + `File.ReadAllText(..., Encoding.UTF8)`, build `systemPrompt`, same rationale in comments.
+**R:** `file.path` + UTF-8 `readLines` + `paste`, inject `context_text` into `system_prompt`, comments on system vs user role and external data.
 
 ---
 
