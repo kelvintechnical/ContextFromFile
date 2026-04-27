@@ -1,97 +1,94 @@
-# --- Project 1: Hello LLM ---
+library(dotenv) # Provides load_dot_env() so .env variables become visible to Sys.getenv()
+library(httr2) # Modern HTTP client: build request, set JSON body, perform POST in a readable pipe
 
-library(httr2)
-library(jsonlite)
-library(dotenv)
+# If you always run from repo root: load_dot_env(file = ".env")
+# If you run from R/: point at the parent folder's .env
 
-# Load optional .env from the working directory into the process environment for local OPENAI_API_KEY (run from repo root).
-dotenv::load_dot_env()
+# --- Step 1: Load API key from environment (Project 1) ---
+load_dot_env(file = file.path("..", ".env")) # Loads OPENAI_API_KEY from project root without hardcoding the key
+api_key <- Sys.getenv("OPENAI_API_KEY") # Reads the key into api_key for Authorization headers
 
-# Load API key from environment so secrets never live in source control.
-api_key <- Sys.getenv("OPENAI_API_KEY")
-if (!nzchar(api_key)) {
-  stop("Set OPENAI_API_KEY in your environment or .env file before running.")
-}
+# --- Step 2: Define base_url and headers (Project 1) ---
+base_url <- "https://api.openai.com/v1/chat/completions" # Chat Completions API route; change here if you ever switch endpoints
+auth_header <- paste("Bearer", api_key) # Full Authorization header OpenAI expects (Bearer + space + key from Step 1)
 
-# Central place for the API endpoint so you can swap providers or versions later.
-base_url <- "https://api.openai.com/v1/chat/completions"
-
+# --- Step 3: Build HTTP POST with JSON payload (Project 1) ---
 call_openai <- function(messages) {
-  # Build HTTP POST with JSON body, send chat history, return assistant text from JSON.
-  req <- request(base_url) |>
+  request(base_url) |>
     req_headers(
-      Authorization = paste("Bearer", api_key),
-      `Content-Type` = "application/json"
+      Authorization = auth_header, # Step 2: proves who we are to OpenAI
+      `Content-Type` = "application/json" # Explicit JSON; matches what req_body_json sends
     ) |>
-    req_body_json(list(model = "gpt-4o-mini", messages = messages))
-
-  resp <- req_perform(req)
-  # Parse JSON explicitly with jsonlite so the response shape is clear and consistent with other languages' parse step.
-  parsed <- jsonlite::fromJSON(resp_body_string(resp), simplifyVector = FALSE)
-  parsed$choices[[1]]$message$content
+    req_body_json(list(
+      model = "gpt-4o-mini", # Cheap, capable chat model; change if your org uses another name
+      messages = messages # Full conversation history (system/user/assistant) as the API expects
+    )) |>
+    req_perform() # Sends the POST and returns the raw response object for Step 4 parsing
 }
 
-# --- Project 2: Persona Bot ---
-
-run_chat <- function(system_prompt) {
-  # Seed the messages list with the system role so the model always sees persona + file context first.
-  messages <- list(list(role = "system", content = system_prompt))
-
-  # Infinite conversation loop with exit condition (user types quit).
-  cat("Chat with context loaded. Type 'quit' to exit.\n\n")
-
-  repeat {
-    user_text <- trimws(readline("You: "))
-    if (tolower(user_text) == "quit") break
-    if (!nzchar(user_text)) next
-
-    # --- Project 3: Chatbot with Memory ---
-
-    # Append user message to messages before calling API so this turn is part of the thread.
-    messages <- append(messages, list(list(role = "user", content = user_text)))
-
-    # Pass full messages history on every API call (call_openai receives the whole list).
-    assistant_reply <- call_openai(messages)
-
-    # Append assistant reply to messages after each turn so the next loop carries memory forward.
-    messages <- append(messages, list(list(role = "assistant", content = assistant_reply)))
-
-    cat("Assistant:", assistant_reply, "\n\n")
-  }
+# --- Step 4: Parse JSON response, extract assistant text (Project 1) ---
+extract_assistant_text <- function(response) {
+  data <- resp_body_json(response) # Decode JSON body to an R list
+  data$choices[[1]]$message$content # First completion's assistant message text
 }
 
-# --- Project 4: Context from a File (new skills at bottom of file) ---
+# --- Step 5: Define system_prompt string (Project 2) ---
+system_prompt <- paste0(
+  "You are my software engineering instructor. ",
+  "You will help me learn how to program in any language.",
+  "You will help me understand the concepts of programming. Lets get started by you explaining the syntax in human readable terms.",
+  "Please explain the syntax in a way that is easy to understand and follow.",
+  "Ask if I understand at each step and if not, explain again in a way that is easy to understand and follow."
+)
 
-main <- function() {
-  # Path handling: locate this script's directory, then join to repo-root context file safely across OSes.
-  args <- commandArgs(trailingOnly = FALSE)
-  file_flags <- args[startsWith(args, "--file=")]
-  script_dir <- if (length(file_flags)) {
-    dirname(normalizePath(sub("^--file=", "", file_flags[1])))
-  } else {
-    getwd()
-  }
-  context_path <- normalizePath(file.path(script_dir, "..", "context.txt"), mustWork = TRUE)
+# --- Step 6: Seed messages with system role (Project 2) ---
+# CONCEPT: The transcript starts with the rules — messages is what you send every turn;
+# role = "system" makes the model treat system_prompt as global policy before any user text.
+messages <- list(list(role = "system", content = system_prompt)) # Initial transcript: policy first, before any user input
 
-  # File I/O: readLines + paste preserves newlines; UTF-8 avoids Windows code-page corruption.
-  # Windows gotcha: readLines without encoding = "UTF-8" assumes the native locale and can mangle UTF-8 files—always set it.
-  file_context <- paste(
-    readLines(context_path, encoding = "UTF-8", warn = FALSE),
-    collapse = "\n"
+# --- Step 7: Build conversation loop with exit condition (Project 3) ---
+# CONCEPT: repeat { ... } runs many turns until break (EOF or "quit").
+repeat {
+  # --- Step 8: Read user input from stdin (Project 3) ---
+  # CONCEPT: stdin is keyboard when interactive, or piped lines when testing; warn=FALSE reduces EOF noise;
+  # encoding="UTF-8" helps on Windows with non-ASCII text.
+  cat("\nYou: ") # Prompt so it is obvious the program is waiting for input
+
+  user_input <- readLines(
+    con = "stdin", # Standard input from the terminal
+    n = 1, # One line per turn
+    warn = FALSE, # Fewer warnings when the stream ends (EOF) without a final newline
+    encoding = "UTF-8" # Prefer UTF-8 so pasted/special characters match your editor and API text
   )
 
-  # String injection: merge file text into the system string before we build the conversation.
+  if (length(user_input) == 0) {
+    break # EOF (e.g. Ctrl+Z then Enter on Windows): exit before subscripting user_input
+  }
 
-  # Define a system persona string (base behavior before we layer file context on top).
-  persona <- "You are a helpful assistant that stays faithful to the supplied context."
-  system_prompt <- paste0(persona, "\n\n--- Context from file ---\n", file_context)
+  user_line <- trimws(user_input[[1]]) # Safe scalar string for quit check and for appending to messages
 
-  # Prompt engineering: system role sets stable instructions and knowledge boundaries for the model;
-  # putting this in the user role would make it look like a turn the human "said," which confuses multi-turn memory and priority.
+  if (tolower(user_line) == "quit") {
+    break # Explicit exit word
+  }
 
-  # Separation of concerns: editing context.txt changes behavior without editing this script.
+  # --- Step 9: Append user message to messages before the API call (Project 3) ---
+  # CONCEPT: The API only sees what is in messages; append preserves full history.
+  messages <- append(
+    messages,
+    list(list(role = "user", content = user_line)) # Record this turn's user text before the POST
+  )
 
-  run_chat(system_prompt)
+  # --- Step 10: Call API and append assistant reply (Project 3) ---
+  # CONCEPT: Send full history, then store the assistant reply so the next turn has context (no amnesia).
+  response <- call_openai(messages) # Full transcript (system + user/assistant turns) in one POST
+  assistant_text <- extract_assistant_text(response) # Plain string from choices[[1]]$message$content
+  cat("\nAssistant:", assistant_text, "\n") # Echo reply to the terminal
+
+  messages <- append(
+    messages,
+    list(list(role = "assistant", content = assistant_text)) # Persist reply for the next user turn
+  )
 }
 
-main()
+# --- Steps 11–12 (Project 4 — next): Read context.txt with safe path + UTF-8; inject into system_prompt
+# before Step 6's messages <- ... (or move messages seeding below file load + injection).
