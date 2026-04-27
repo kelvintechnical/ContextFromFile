@@ -1,4 +1,4 @@
-# Environment
+# Environment — do not commit .env (API keys and other secrets); keep it local; .env.example documents keys without values
 .env
 .env.local
 *.pem
