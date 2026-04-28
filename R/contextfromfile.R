@@ -92,3 +92,88 @@ repeat {
 
 # --- Steps 11–12 (Project 4 — next): Read context.txt with safe path + UTF-8; inject into system_prompt
 # before Step 6's messages <- ... (or move messages seeding below file load + injection).
+
+
+# Step 11 — Read context.txt from disk (safe path + UTF-8) (Project 4, new)
+# Build a path to context.txt next to your project (e.g. with file.path("..", "context.txt") when you run from R/), so it doesn’t depend on the current working directory in a fragile way.
+# Read the file as UTF-8 and turn it into one string (e.g. paste(readLines(..., warn = FALSE), collapse = "\n"), with encoding handled as you prefer for your R version).
+# Store that string in something like context_text (or a name you keep consistent with your README).
+
+context_path <- file.path("..", "context.txt")   # # Stable path from R/ to project root; avoids hardcoding a drive letter
+context_lines <- readLines(context_path, warn = FALSE, encoding = "UTF-8") #  # One string per line; UTF-8 for Windows/editor consistency
+context_text <- paste(context_lines, collapse = "\n") # # Single block of text to inject into the system prompt in Step 12
+
+# Rscript -e "p <- file.path('..','context.txt'); x <- paste(readLines(p, warn=FALSE, encoding='UTF-8'), collapse='\n'); cat(nchar(x) > 0, '\n')"
+
+# Step 13: Inject file contents into system_prompt BEFORE seeding messages 
+# (Project 4 origin)
+# # ========================================= 
+# CONCEPT: messages captures whatever system_prompt is at the moment you create it.
+# # If you seed messages first, the model never sees your file 
+# context.
+# # So you must: 
+# read context_text → build final system_prompt → then create messages.
+# # In your chatbot.R, 
+# this Step 13 code must appear right before the line
+#  that seeds messages (your current Step 6).
+
+#TASK: Save a copy of the original instructions before 
+#adding the file context.
+#WHY: We're about to overwrite system_prompt; without a backup we lose the base persona for any
+#later rebuild
+#DEPENDS ON: 'system_prompt'  from step 5 (Persona Bot)
+#SYNTAX: Use '<-' to assign the current string into a new variable name. 
+base_system_prompt <- system_prompt
+# Python: base_system_prompt = system_prompt
+# C# : string baseSystemPrompt = systemPrompt;
+
+
+# Task: Create a system prompt by adding the context file text underneath the original instructions.
+# WHY: The model only 'knows' what is in its system prompt -- injecting the file is how external context becomes useable. 
+# DEPENDS ON: 'base_system_prompt' from line above, + 'context_text' from step 12 (file read)
+# SYNTAX: paste0() concactenates strings with no separator; "\n\n" inserts a blank line for readability.
+
+system_prompt <- paste0(base_system_prompt, "\n\n", context_text)
+# Python: system_prompt = base_system_prompt + "\n\n" + context_text
+# C#: systemPrompt = baseSystemPrompt + "\n\n" + contextText;
+
+
+messages <- list(
+  list(
+    role = "system", 
+    "content" = system_prompt
+  )
+)
+# Python: messages = [{role: "system", "content": system_prompt}]
+# C#: var messages = new List<Dictonary<string,string>> {new () {["role"] = "system", ["content"]=systemPrompt}}; 
+
+
+# Step 14: Verify the context is actually being sent 
+# Project 4 wrap-up)
+# ========================================= 
+# CONCEPT: “It ran” isn’t proof the model saw your file — 
+# you must verify the system message contains the injected text.
+
+#TASK: Confirm the system message message contains the injected context text.
+#WHY: This proves step 13 worked and the API will receive the file context.
+#DEPENDS ON: 'messags' seeded after rebuilding 'system_prompt' (Steps 12-13)
+#SYNTAX: messages[[1]] selects the first message; '$content' pulls the content field; cat() prints it.
+cat(messages[[1]]$content, "\n")
+# Python: print(message[0]["content"])
+# C#: Console.WriteLine(message[0]["content"])
+
+
+#TASK: Ask a question tat only the context file can answer.
+# WHY: This proves the model has the file context available. 
+# DEPENDS ON: 'context_text' containing real, specific info (Step 12) + injected into 'system_prompt' (Step 13).
+# SYNTAX: Type a prompt into your exisiting repeat/readLines Loop and look for 
+# file-specific details in the reply
+
+user_line <- "What specific facts did you learn from context.txt? Quote one line and express your intrepretation of it."
+
+# Step 15: Run the full chatbot loop and confirm context affects answers 
+# (Project 4 completion)
+# ========================================= 
+# CONCEPT: Now that system_prompt includes the file, 
+# the running loop should consistently answer using that context every turn.
+

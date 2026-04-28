@@ -10,8 +10,10 @@ Read this **before** writing code for any project in this series.
   Add a system prompt that shapes model behavior. One user input, one response.
 - **Project 3 — Chatbot with Memory** — https://github.com/kelvintechnical/Chatbot_with_memory  
   Add a loop. Append user message, get response, append assistant response. Messages list grows each turn.
-- **Project 4 — Context from a File** — Inject `.txt` content into system_prompt.
-- **Project 5 — PDF Reader Bot** — Replace `.txt` with PDF parsing.
+- **Project 4 — Context from a File** — Inject `.txt` content into system_prompt. https://github.com/kelvintechnical/ContextFromFile
+
+- **Project 5 — PDF Reader Bot** — Replace `.txt` with PDF parsing. https://github.com/kelvintechnical/PDFReaderBot
+
 - **Project 6 — Add a Gradio UI** — Wrap chatbot in Gradio.
 - **Project 7 — Your First Tool** — Single JSON tool schema + tool_calls.
 - **Project 8 — Multi-Tool IF Router** — Two tools + handle_tool_calls().
@@ -39,7 +41,7 @@ Read this **before** writing code for any project in this series.
 
 ---
 
-## Master Skill Inventory (Projects 1–3)
+## Master Skill Inventory (Projects 1–4)
 
 This is the complete list of skills that must be retyped in every project from Project 4 onward.
 
@@ -69,26 +71,37 @@ This is the complete list of skills that must be retyped in every project from P
 | 10 | Append user message to messages BEFORE API call | `messages.append({"role": "user", "content": user_input})` | `messages <- append(messages, list(list(role = "user", content = user_input)))` | `messages.Add(new Dictionary<string, string> { { "role", "user" }, { "content", userInput } })` |
 | 11 | Append assistant reply to messages AFTER API call | `messages.append({"role": "assistant", "content": response})` | `messages <- append(messages, list(list(role = "assistant", content = response)))` | `messages.Add(new Dictionary<string, string> { { "role", "assistant" }, { "content", response } })` |
 
+### Project 4 — Context from a File (Skills 12–13)
+
+
+
+| # | Skill | Python | R | C# |
+|---|-------|--------|---|-----|
+| 12 | Read `context.txt` from disk with UTF-8 + safe path into `context_text` | `context_path = Path("..") / "context.txt"; context_text = context_path.read_text(encoding="utf-8")` | `context_path <- file.path("..","context.txt"); context_text <- readLines(context_path, warn=FALSE, encoding="UTF-8") \|> paste(collapse="\n")` | `var contextPath = Path.Combine("..","context.txt"); string contextText = File.ReadAllText(contextPath, Encoding.UTF8);` |
+| 13 | Inject file contents into `system_prompt` BEFORE seeding `messages` (backup base first) | `base_system_prompt = system_prompt; system_prompt = base_system_prompt + "\n\n" + context_text; messages = [{"role":"system","content":system_prompt}]` | `base_system_prompt <- system_prompt; system_prompt <- paste0(base_system_prompt, "\n\n", context_text); messages <- list(list(role="system", content=system_prompt))` | `string baseSystemPrompt = systemPrompt; systemPrompt = baseSystemPrompt + "\n\n" + contextText; var messages = new List<Dictionary<string,string>> { new() { ["role"] = "system", ["content"] = systemPrompt } };` |
 ---
 
 ## Sequential Step Rebuild Workflow
 
 When starting any project from Project 4 onward, walk through ALL prior steps before introducing the new step. **Example for Project 4:**
 
+**Rule:** The Project N step table must include **every skill** in the Master Skill Inventory up to Project N, in numeric order. New Project N skills are appended at the bottom using the **next available** step numbers.
+
 | Step # | Task | Project Origin | Status |
 |--------|------|----------------|--------|
 | 1 | Load API key from environment | Project 1 | Reuse |
 | 2 | Define base_url and headers | Project 1 | Reuse |
-| 3 | Build HTTP POST function | Project 1 | Reuse |
-| 4 | Parse JSON response | Project 1 | Reuse |
+| 3 | Build HTTP POST with JSON payload | Project 1 | Reuse |
+| 4 | Parse JSON response, extract assistant text | Project 1 | Reuse |
 | 5 | Define system_prompt string | Project 2 | Reuse |
 | 6 | Seed messages list with system role | Project 2 | Reuse |
-| 7 | Build conversation loop with exit | Project 3 | Reuse |
-| 8 | Read user input from stdin | Project 3 | Reuse |
-| 9 | Append user message before API call | Project 3 | Reuse |
-| 10 | Append assistant reply after API call | Project 3 | Reuse |
-| 11 | Read context.txt with UTF-8 | **Project 4 — NEW** | New |
-| 12 | Inject file contents into system_prompt | **Project 4 — NEW** | New |
+| 7 | Single-turn user message + response | Project 2 | Reuse |
+| 8 | Build infinite conversation loop with exit condition | Project 3 | Reuse |
+| 9 | Read user input from stdin | Project 3 | Reuse |
+| 10 | Append user message to messages BEFORE API call | Project 3 | Reuse |
+| 11 | Append assistant reply to messages AFTER API call | Project 3 | Reuse |
+| 12 | Read context.txt from disk with UTF-8 + safe path | **Project 4 — NEW** | New |
+| 13 | Inject file contents into system_prompt BEFORE seeding messages | **Project 4 — NEW** | New |
 
 By **Project 15**, the table will have **~40+ steps** spanning every project.
 
@@ -112,16 +125,83 @@ Every step response must contain:
 
 1. **Step heading:** `Step X: [Description] (Project Y origin)`
 2. **CONCEPT block:**
-=========================================
-CONCEPT: [High-level mental model]
-=========================================
-[What this does in 2-4 bullets]
-STEP-BY-STEP:
-1. [First action]
-2. [Second action]
-3. **Code:** 1–3 lines for current language only, with inline comments
-4. **Verification:** How to test it works
-5. **STOP.** Wait for "next step"
+   =========================================
+   CONCEPT: [High-level mental model]
+   =========================================
+   [What this does in 2–4 bullets]
+3. **Code block** using the 4-comment pattern (see below):
+   - `# TASK:` — plain English, no function names. Forces recall.
+   - `# SYNTAX:` — explains the exact syntax used and why.
+   - The actual line of code.
+   - `# PYTHON:` — equivalent line as a comment.
+   - `# C#:` — equivalent line as a comment.
+4. **Verification:** How to test it works (1 line).
+5. **STOP.** Wait for "next step".
+
+### Comment Pattern (Mandatory for Every Code Line)
+
+Every line of code in every step must follow this 4-comment pattern. The TASK comment lets the learner attempt the syntax themselves before reading the answer.
+
+**Template:**
+
+```<lang>
+# TASK: [What needs to happen, in plain English. No function names.]
+# SYNTAX: [Why this exact syntax/function/operator is used.]
+<actual code line>
+# PYTHON: <equivalent Python line>                       # any imports needed
+# C#:     <equivalent C# line>                           // any usings needed
+```
+
+**Worked example (Step 1 — R):**
+
+```r
+# --- Step 1: Load API key from environment (Project 1) ---
+
+# TASK: Load environment variables from a .env file located one directory up from the project root.
+# SYNTAX: Call load_dot_env() with the `file =` argument. file.path("..", ".env") builds an OS-safe relative path.
+load_dot_env(file = file.path("..", ".env"))
+# PYTHON: load_dotenv(dotenv_path="../.env")             # from dotenv import load_dotenv
+# C#:     Env.Load("../.env");                           // using DotNetEnv;
+
+# TASK: Pull the OpenAI API key out of the environment and store it for use in request headers.
+# SYNTAX: Sys.getenv("VAR_NAME") returns the value as a string (or "" if missing). Assign with `<-`.
+api_key <- Sys.getenv("OPENAI_API_KEY")
+# PYTHON: api_key = os.getenv("OPENAI_API_KEY")          # import os; returns None if missing
+# C#:     string apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY"); // returns null if missing
+```
+
+**Cross-language gotcha line** (include at the end of any step where it applies):
+
+> Missing-var return: R → `""` · Python → `None` · C# → `null`
+
+**Rules:**
+- The `# PYTHON:` and `# C#:` comments appear in **every** language's code block, not just R. (When teaching Python, the equivalents become `# R:` and `# C#:`.)
+- TASK comments must be **language-agnostic** — they describe intent, not syntax.
+- If a concept has a non-obvious failure mode, add a 5th line: `# GOTCHA: ...`
+
+**Worked example (Step 13 — R, inject context + reseed messages):**
+
+```r
+# --- Step 13: Inject file contents into system_prompt BEFORE seeding messages (Project 4) ---
+
+# TASK: Save a copy of the original instructions before adding file context.
+# SYNTAX: Use `<-` to assign the current string into a new variable name.
+base_system_prompt <- system_prompt
+# PYTHON: base_system_prompt = system_prompt
+# C#:     string baseSystemPrompt = systemPrompt;
+
+# TASK: Create a new system prompt by adding the context file text underneath the original instructions.
+# SYNTAX: paste0() concatenates strings with no separator; "\n\n" inserts a blank line for readability.
+system_prompt <- paste0(base_system_prompt, "\n\n", context_text)
+# PYTHON: system_prompt = base_system_prompt + "\n\n" + context_text
+# C#:     systemPrompt = baseSystemPrompt + "\n\n" + contextText;
+
+# TASK: Start the chat history with exactly one system message containing the final system prompt.
+# SYNTAX: list(list(...)) creates an outer list holding one inner list with role+content fields.
+messages <- list(list(role = "system", content = system_prompt))
+# PYTHON: messages = [{"role": "system", "content": system_prompt}]
+# C#:     var messages = new List<Dictionary<string,string>> { new() { ["role"]="system", ["content"]=systemPrompt } };
+```
 
 ### Trigger Phrases
 
@@ -246,3 +326,4 @@ Every project README must follow this structure:
 4. **Verify each step.** Don't move on until learner confirms it works.
 5. **One language at a time.** Default order R → Python → C# unless overridden.
 6. **CONCEPT comment block on every step.** Mental model first, then code.
+7. **Every code line uses the 4-comment pattern:** TASK → SYNTAX → code → PYTHON equivalent → C# equivalent (rotated based on current language). No exceptions.
